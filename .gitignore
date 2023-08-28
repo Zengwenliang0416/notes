@@ -12,6 +12,10 @@
 .mtj.tmp/
 /.idea/
 
+.DS_Store
+**/.DS_Store
+.DS_Store?
+
 # Package Files #
 *.jar
 *.war
