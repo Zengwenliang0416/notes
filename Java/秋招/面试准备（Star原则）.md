@@ -97,3 +97,67 @@
    - 将产品包中的jar包替换为新生成的jar包。
 
 4. Result（结果）：成功替换jar包。
+
+# v9日志配置
+
+1. Situation（情境）：按天配置时，logs保存路径为相对路径导致维护时难以找到日志文件
+2. Task（任务）：以绝对路径启动服务器时，按日生成的日志文件生成在domain/mydomain文件夹中。
+3. Action（行动）：
+   - 首先，在本地的ubuntu服务器上以绝对路径启动v9服务器，重现该问题。
+   - 其次，查看源码，发现源码中有以绝对路径保存日志文件的相关设置，只是被配置文件中的参数覆盖了。
+   - 然后，在面板将“日期文件输出->日志基础目录”中的参数删除或者将"config->logging.xml"中`com.apusic.logging.DateFileHandler`的`<property name="path" value="logs"/>`删除。
+   - 以上方式尽管已经解决了该问题，但是在重新启动服务器时，尽管配置文件并没有path的相关配置，但是日志基础目录中还是会有。
+4. Result（结果）：以以上方式解决后，通过绝对路径启动服务器时，日志成功生成在了相应文件夹中。
+
+# v9日志配置-改进
+
+1. Situation（情境） ：
+
+   删除配置文件中的path参数之后，控制面板中的日志基础目录中的参数还是logs。
+
+2.  Task（任务） 
+
+   删除配置文件中path参数之后，控制面板中的日志基础目录中的参数为空或者为设置的绝对路径。
+
+3.  Action（行动） ：
+
+   - 查找控制面板中响应的jsp界面，查看jsp页面中的日志基础目录是如何被赋值的。 
+   - 找到日志配置的相应代码在`apusic-aasadmin-core-server-api`中的`com.apusic.aasadmin.core.server.log.model.DateFileHandlerModel`类中对`path`初始化为`logs`。 
+   - 将初始化后的值改为""，尝试打包并验证该方法是否正确。
+   - 将修改后的java文件重新编译之后替换掉`aasadmin-core-server-api-9.0.3.jar `中的`DateFileHandlerModel`的字节码文件，经过验证该方法无法解决。
+     - `jar tf aasadmin-core-server-api-9.0.3.jar | find "DateFileHandlerModel"`
+     - `jar uvf aasadmin-core-server-api-9.0.3.jar com/apusic/aasadmin/core/server/log/model/DateFileHandlerModel.class`
+   - **问题**在于：当`logging.xml`中没有`path`参数时，服务器会读取`com.apusic.tools.admin.LoggingAdmin.DataFileHandlerConfig`类中的空参构造器中的参数。
+   - 修改空参构造器参数为`map.put("path", System.getProperty("com.apusic.domain.home")+"/logs");`，在重新构建可执行`jar`包的时候出现问题。理想情况下面板上应该会显示日志文件所在文件夹的绝对路径。
+   - 使用`jdk11`打包过程中出现的问题可以通过更换`jdk`版本解决，实测过程中`jdk8`可成功打包，命令为:`ant`。
+   - 重新打包后，面板上显示出了日志文件所在文件夹的绝对路径。
+
+4. Result（结果） ：成功解决在删除配置文件中的path参数后，控制面板中的基础目录中的参数显示的是存放日志文件的绝对路径。
+
+# v9日志配置-优化
+
+1. Situation（情境） ：
+
+   在ubuntu系统下通过命令`nohup /home/wb_cengwenliang/下载/AAS-V9.0/bin/startas mydomain > /dev/null 2>&1 &`启动服务器时，按日期生成的日志文件存放文件夹位于启动位置下。
+
+2.  Task（任务） 
+
+   以命令`nohup /home/wb_cengwenliang/下载/AAS-V9.0/bin/startas mydomain > /dev/null 2>&1 &`启动服务器时，将日志文件生成在domain下。
+
+3. Action（行动） ：
+
+   - 在生成日志文件名之前判断当前path是否为绝对路径，如果是则不进行处理，否则在path前加上homedir。
+   - 打包服务器源码失败，出现错误：`Caused by: org.apache.maven.plugin.compiler.CompilationFailureException: Compilation failure    at org.apache.maven.plugin.compiler.AbstractCompilerMojo.execute (AbstractCompilerMojo.java:909)`。
+   - 打包方式的问题，v9应该在build目录下采用ant进行打包，在打包之前需要clone两个项目到服务器源码的同级目录，代码如下：
+
+   ```bash
+   git clone http://gitlab.apusic.net/aasv9-group/master/apusicembedlauncher.git
+   git clone http://gitlab.apusic.net/aasv9-group/master/elite.git
+   ```
+
+   - 打包需要jdk8u144，否则会出现错误：`错误: 找不到符号    [javac]. JPEGImageDecoder decoder = null; `。
+   - 打包正确后，解决该日志配置的问题，但是在这个过程中，有一个`store`文件夹会被创建在命令行执行的路径下，需要进一步优化。
+
+4. Result（结果） ：
+
+​		在ubuntu系统下通过命令`nohup /home/wb_cengwenliang/下载/AAS-V9.0/bin/startas mydomain > /dev/null 2>&1 &`启动服务器时，按日期生成的日志文件成功生成在domain目录下。
