@@ -157,7 +157,13 @@
 
    - 打包需要jdk8u144，否则会出现错误：`错误: 找不到符号    [javac]. JPEGImageDecoder decoder = null; `。
    - 打包正确后，解决该日志配置的问题，但是在这个过程中，有一个`store`文件夹会被创建在命令行执行的路径下，需要进一步优化。
+   - 采用打补丁的方式将修改的地方完善，具体步骤如下：
+     - 找到修改的类所在的jar包（lib/apusic.jar）
+     - 解压jar包后将重现编译生成的包保留，其他都删除，保留com/apusic/logging/DateFileHandler.class和相关文件
+     - 使用命令`jar -cvf datelogfile-not-in-domain.jar com`生成对应的jar包
+     - 将jar包放到服务器目录的sp文件夹中
 
 4. Result（结果） ：
 
 ​		在ubuntu系统下通过命令`nohup /home/wb_cengwenliang/下载/AAS-V9.0/bin/startas mydomain > /dev/null 2>&1 &`启动服务器时，按日期生成的日志文件成功生成在domain目录下。
+
