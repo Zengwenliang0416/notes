@@ -167,3 +167,15 @@
 
 ​		在ubuntu系统下通过命令`nohup /home/wb_cengwenliang/下载/AAS-V9.0/bin/startas mydomain > /dev/null 2>&1 &`启动服务器时，按日期生成的日志文件成功生成在domain目录下。
 
+
+
+# 启动管控台后进入系统参数界面
+
+1. Situation（情境）：启动Apusic V9服务器后，进入管控台的系统参数界出现500错误。
+2. Task（任务）：从管控台正常查看系统参数。
+3. Action（行动）：
+   - 首先，查看全局日志文件，找到服务器出现的异常为空指针异常，具体位置在`com.apusic.aasadmin.monitor.web.sysconfig.SysParamController.init()`方法中，具体体现为函数中的`JvmMaxPermSize`值为null。
+   - 其次，查看该系统参数的配置位置是`domian`下的`shell`启动脚本中，总共分为两种方式，第一种是从`data.xml`中读取，第二种是在shell脚本中进行配置。
+   - 查看客户的启动脚本，发现是通过从`data.xml`中读取到的配置，而其中没有对`JvmMaxParaSize`参数赋值，导致出现空指针。
+   - 在data.xml中添加`-XX:MaxPermSize=8g`初始化这部分参数。
+4. Result（结果）：经过以上行动，`NullPointerException`异常问题被解决，程序可以从管控台正常查看系统参数。
